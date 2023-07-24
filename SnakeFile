@@ -1,0 +1,61 @@
+from pathlib import Path
+from inputs import CAR_CLASSES, COMPONENTS, SOURCES, RESULT_FILES, PART_RESULT_FILES
+from generate_result_files import create_all_result_files, create_source_directories, create_result_files, create_part_directories
+import json
+import os
+
+PART_PATH = "{component}/{car_class}/{part_id}"
+RESULT_FILE_PATH = "{component}/{car_class}/{part_id}/results"
+PART_RESULT = "{component}/{car_class}/{part_id}/result.txt"
+
+
+rule all:
+    input:
+        "component_1/class_1/9dad3e99-d601-4ca5-aa41-9374eafaf32b/result.txt"
+
+checkpoint generate_results:
+    input:
+        "input.json",
+        PART_PATH
+    output:
+        directory(RESULT_FILE_PATH)
+    params:
+        part_id = lambda wildcards: wildcards.get("part_id")
+    run:
+        with open(input[0]) as input_file:
+            input_data = json.load(input_file)
+            sources = input_data["sources"]
+        results_dir = Path(input[1]) / "results"
+        os.mkdir(results_dir)
+        for index, source in enumerate(sources):
+            source_dir = results_dir / source
+            os.mkdir(source_dir)
+            result_filename = source_dir / f"{params.part_id}.txt"
+            with open(result_filename, "w") as result_file:
+                result_file.write(str(index))
+
+def aggregate_source_results(wildcards):
+    checkpoint_output = checkpoints.generate_results.get(**wildcards).output[0]
+    paths = expand(f"{wildcards.component}/{wildcards.car_class}/{wildcards.part_id}/results/{{source}}/{wildcards.part_id}.txt",
+                source=glob_wildcards(os.path.join(checkpoint_output, f"{{source}}/{wildcards.part_id}.txt")).source)
+    return paths
+
+rule aggergate_results:
+    input:
+        aggregate_source_results
+    output:
+        PART_RESULT
+    run:
+        print(input)
+        output_str = ""
+        for filepath in input:
+            with open(filepath) as file:
+                output_str += file.read()
+        print(output_str)
+        print(output[0])
+        with open(output[0], "w") as output_file:
+            output_file.write(output_str)
+
+
+
+    
