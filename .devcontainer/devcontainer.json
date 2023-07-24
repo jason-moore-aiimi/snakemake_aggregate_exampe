@@ -8,5 +8,5 @@
 			]
 		}
 	},
-	"postCreateCommand": "pip install -f requirments.txt && python generate_parts_folders.py"
+	"postCreateCommand": "pip install -r requirments.txt && python generate_parts_folders.py"
 }
